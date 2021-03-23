@@ -1,0 +1,11 @@
+variable "instance_type" {}
+variable "public_subnet_id" {}
+variable "app_subnet_id" {}
+variable "private_sg" {}
+variable "inbound_ips" {}
+variable "onprem_dns_ips" {}
+variable "onprem_dns_interface_ids" {}
+variable "rds_db_name" {}
+variable "rds_db_user" {}
+variable "rds_db_password" {}
+variable "ec2_ssm_instance_profile" {}
