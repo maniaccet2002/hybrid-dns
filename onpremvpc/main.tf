@@ -82,6 +82,11 @@ resource "aws_route_table_association" "private_route_assoc" {
   subnet_id = aws_subnet.onprem-app.*.id[count.index]
   route_table_id = aws_route_table.private_route_table.id
 }
+resource "aws_route_table_association" "private_route_assoc_db" {
+  count = length(local.cidr_list[0])
+  subnet_id = aws_subnet.onprem-db.*.id[count.index]
+  route_table_id = aws_route_table.private_route_table.id
+}
 # Security group which allows public access 
 resource "aws_security_group" "private_sg" {
   name = "onprem_private_sg"
@@ -128,6 +133,64 @@ resource "aws_security_group" "private_sg" {
     to_port = 0
     protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"] 
+  }
+}
+resource "aws_security_group" "public_sg" {
+  name = "public_sg"
+  description = "Public Security Group"
+  vpc_id = aws_vpc.onpremvpc.id
+  ingress  {
+    from_port = 3389
+    to_port = 3389
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port = -1
+    to_port = -1
+    protocol = "icmp"
+    cidr_blocks = ["0.0.0.0/0"] 
+  }
+  ingress {
+    from_port = 0
+    to_port = 65535
+    protocol = "tcp"
+    self = true 
+  }
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"] 
+  }
+}
+resource "aws_security_group" "wordpress_db_sg_onprem" {
+  name = "wordpress_rds_sg_onprem"
+  description = "Wordpress RDS Security Group"
+  vpc_id = aws_vpc.onpremvpc.id
+  ingress  {
+    from_port = 3306
+    to_port = 3306
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress  {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port = -1
+    to_port = -1
+    protocol = "icmp"
+    cidr_blocks = ["0.0.0.0/0"] 
+  }
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = -1
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 resource "aws_network_interface" "dnsserver1_eni" {

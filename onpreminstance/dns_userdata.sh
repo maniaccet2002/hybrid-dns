@@ -1,5 +1,6 @@
 #!/bin/bash -xe
 appprivateip=${appprivateip}
+dbprivateip=${dbprivateip}
 r53_inbound_ip1=${r53_inbound_ip1}
 r53_inbound_ip2=${r53_inbound_ip2}
 yum update -y
@@ -53,6 +54,8 @@ dnsB	  IN	A		8.8.8.8
 ; Define hostname -> IP pairs which you wish to resolve
 @		  IN	A		${appprivateip}
 app		IN	A	  ${appprivateip}
+@		  IN	A		${dbprivateip}
+db		IN	A	  ${dbprivateip}
 EOF
 service named restart
 chkconfig named on

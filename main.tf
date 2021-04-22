@@ -44,7 +44,11 @@ module "awsec2" {
     public_subnet_id = module.awsvpc.aws-public-1a
     app_subnet_id = module.awsvpc.aws-app-1a
     private_sg = module.awsvpc.private_sg
+    public_sg = module.awsvpc.public_sg
     ec2_ssm_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+    rds_db_name = var.wordpress_db_name
+    rds_db_user = var.wordpress_db_user
+    rds_db_password = var.wordpress_db_password
     depends_on = [module.awsvpc]
 }
 module "onpremec2" {
@@ -52,11 +56,17 @@ module "onpremec2" {
     instance_type = "t2.micro"
     public_subnet_id = module.onpremvpc.onprem-public-1a
     app_subnet_id = module.onpremvpc.onprem-app-1a
+    db_subnet_id = module.onpremvpc.onprem-db-1a
     private_sg = module.onpremvpc.private_sg
+    public_sg = module.onpremvpc.public_sg
+    wordpress_db_sg = module.onpremvpc.wordpress_db_sg
+    app_server_ip = module.awsec2.appserver_ip
+    app_server_dns = module.awsec2.app_server_dns
     ec2_ssm_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
     onprem_dns_interface_ids = module.onpremvpc.onprem_dns_interface_ids
     onprem_dns_ips = module.onpremvpc.onprem_dns_ips
     inbound_ips = module.route53.inbound_ips
+    #inbound_ips = ["10.10.10.10","10.10.10.11"]
     rds_db_name = var.wordpress_db_name
     rds_db_user = var.wordpress_db_user
     rds_db_password = var.wordpress_db_password

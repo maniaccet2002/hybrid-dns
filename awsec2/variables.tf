@@ -2,4 +2,8 @@ variable "instance_type" {}
 variable "public_subnet_id" {}
 variable "app_subnet_id" {}
 variable "private_sg" {}
+variable "public_sg" {}
 variable "ec2_ssm_instance_profile" {}
+variable "rds_db_name" {}
+variable "rds_db_user" {}
+variable "rds_db_password" {}

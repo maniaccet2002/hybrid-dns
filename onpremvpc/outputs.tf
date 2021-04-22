@@ -29,6 +29,12 @@ output "onprem-db-1b" {
 output "private_sg" {
   value = aws_security_group.private_sg.id
 }
+output "public_sg" {
+  value = aws_security_group.private_sg.id
+}
+output "wordpress_db_sg" {
+  value = aws_security_group.wordpress_db_sg_onprem.id
+}
 output "onprem_route_table_id" {
   value = aws_route_table.public_route_table.id
 }

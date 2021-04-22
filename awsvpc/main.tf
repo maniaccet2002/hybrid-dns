@@ -62,9 +62,23 @@ resource "aws_route_table_association" "public_route_assoc" {
   subnet_id = aws_subnet.aws-public.*.id[count.index]
   route_table_id = aws_route_table.public_route_table.id
 }
+
+resource "aws_eip" "nat_eip" {
+  vpc = true
+}
+resource "aws_nat_gateway" "aws_nat" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id = aws_subnet.aws-public.*.id[0]
+}
 # Route table configurations
 resource "aws_route_table"  "private_route_table" {
   vpc_id = aws_vpc.awsvpc.id
+}
+
+resource "aws_route" "private_default_route" {
+  route_table_id = aws_route_table.private_route_table.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id = aws_nat_gateway.aws_nat.id
 }
 
 resource "aws_route_table_association" "app_route_assoc" {
@@ -124,6 +138,35 @@ resource "aws_security_group" "private_sg" {
     cidr_blocks = ["0.0.0.0/0"] 
   }
 }
+resource "aws_security_group" "public_sg" {
+  name = "public_sg"
+  description = "Public Security Group"
+  vpc_id = aws_vpc.awsvpc.id
+  ingress  {
+    from_port = 3389
+    to_port = 3389
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port = -1
+    to_port = -1
+    protocol = "icmp"
+    cidr_blocks = ["0.0.0.0/0"] 
+  }
+  ingress {
+    from_port = 0
+    to_port = 65535
+    protocol = "tcp"
+    self = true 
+  }
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"] 
+  }
+}
 resource "aws_vpc_endpoint" "ssmendpoint" {
   vpc_endpoint_type = "Interface"
   vpc_id = aws_vpc.awsvpc.id
@@ -147,4 +190,10 @@ resource "aws_vpc_endpoint" "ec2messageendpoint" {
   subnet_ids = aws_subnet.aws-app[*].id
   security_group_ids = [ aws_security_group.private_sg.id ]
   private_dns_enabled = true
+}
+resource "aws_vpc_endpoint" "s3gatewayendpoint" {
+  vpc_endpoint_type = "Gateway"
+  vpc_id = aws_vpc.awsvpc.id
+  service_name = "com.amazonaws.us-east-1.s3"
+  route_table_ids = [ aws_route_table.private_route_table.id ]
 }
