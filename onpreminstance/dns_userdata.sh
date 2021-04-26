@@ -3,6 +3,9 @@ appprivateip=${appprivateip}
 dbprivateip=${dbprivateip}
 r53_inbound_ip1=${r53_inbound_ip1}
 r53_inbound_ip2=${r53_inbound_ip2}
+aws_dns_name=${aws_dns_name}
+onprem_dns_name=${onprem_dns_name}
+router_ip=${router_ip}
 yum update -y
 yum install bind bind-utils -y
 cat <<EOF > /etc/named.conf
@@ -15,7 +18,7 @@ allow-query { any; };
 recursion yes;
 forward first;
 forwarders {
-    192.168.10.2;
+    ${router_ip};
 };
 dnssec-enable yes;
 dnssec-validation yes;
@@ -24,18 +27,18 @@ dnssec-lookaside auto;
 bindkeys-file "/etc/named.iscdlv.key";
 managed-keys-directory "/var/named/dynamic";
 };
-zone "corp.animals4life.org" IN {
+zone "${onprem_dns_name}" IN {
     type master;
-    file "corp.animals4life.org.zone";
+    file "${onprem_dns_name}.zone";
     allow-update { none; };
 };
-zone "aws.company.com" { 
+zone "${aws_dns_name}" { 
   type forward; 
   forward only;
   forwarders { ${r53_inbound_ip1}; ${r53_inbound_ip2}; }; 
 };
 EOF
-cat <<EOF > /var/named/corp.animals4life.org.zone
+cat <<EOF > /var/named/${onprem_dns_name}.zone
 \$TTL 86400
 @   IN  SOA     ns1.mydomain.com. root.mydomain.com. (
         2013042201  ;Serial
@@ -45,17 +48,17 @@ cat <<EOF > /var/named/corp.animals4life.org.zone
         86400       ;Minimum TTL
 )
 ; Specify our two nameservers
-    IN	NS		dnsA.corp.animals4life.org.
-    IN	NS		dnsB.corp.animals4life.org.
+    IN	NS		dnsA.${onprem_dns_name}.
+    IN	NS		dnsB.${onprem_dns_name}.
 ; Resolve nameserver hostnames to IP, replace with your two droplet IP addresses.
 dnsA		IN	A		1.1.1.1
 dnsB	  IN	A		8.8.8.8
 
 ; Define hostname -> IP pairs which you wish to resolve
 @		  IN	A		${appprivateip}
-app		IN	A	  ${appprivateip}
+wordpress		IN	A	  ${appprivateip}
 @		  IN	A		${dbprivateip}
-db		IN	A	  ${dbprivateip}
+wordpressdb		IN	A	  ${dbprivateip}
 EOF
 service named restart
 chkconfig named on

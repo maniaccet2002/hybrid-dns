@@ -1,6 +1,8 @@
 locals {
    cidr_list = [for cidr_block in cidrsubnets(var.aws_vpc_cidr,2,2,2,2) : cidrsubnets(cidr_block,2,2) ]
  }
+
+ #VPC
 resource "aws_vpc" "awsvpc" {
   cidr_block       = var.aws_vpc_cidr
   instance_tenancy = "default"
@@ -14,10 +16,13 @@ resource "aws_vpc" "awsvpc" {
     create_before_destroy = true
   }
 }
+
 # Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.awsvpc.id
 }
+
+#Public Subnet
 resource "aws_subnet" "aws-public" {
   count = length(local.cidr_list[0])
   vpc_id = aws_vpc.awsvpc.id
@@ -28,6 +33,8 @@ resource "aws_subnet" "aws-public" {
     Name = "aws-public-${split("-",var.az_list[count.index])[2]}"
   }
 }
+
+# Private subnet for application layer
 resource "aws_subnet" "aws-app" {
   count = length(local.cidr_list[1])
   vpc_id = aws_vpc.awsvpc.id
@@ -38,6 +45,8 @@ resource "aws_subnet" "aws-app" {
     Name = "aws-app-${split("-",var.az_list[count.index])[2]}"
   }
 }
+
+#Private subnet for database layer
 resource "aws_subnet" "aws-db" {
   count = length(local.cidr_list[2])
   vpc_id = aws_vpc.awsvpc.id
@@ -48,7 +57,9 @@ resource "aws_subnet" "aws-db" {
     Name = "aws-db-${split("-",var.az_list[count.index])[2]}"
   }
 }
-# Route table configurations
+
+
+# Route table configurations for public subnet
 resource "aws_route_table"  "public_route_table" {
   vpc_id = aws_vpc.awsvpc.id
 }
@@ -63,24 +74,26 @@ resource "aws_route_table_association" "public_route_assoc" {
   route_table_id = aws_route_table.public_route_table.id
 }
 
+# Elastic IP to be used for Nat Gateway
 resource "aws_eip" "nat_eip" {
   vpc = true
 }
+# Nat gateway. Nat gateway is used by the EC2 instances to access the internet and download wordpress application
 resource "aws_nat_gateway" "aws_nat" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id = aws_subnet.aws-public.*.id[0]
 }
-# Route table configurations
+
+
+# Route table configurations for private route table with route to NAT gateway
 resource "aws_route_table"  "private_route_table" {
   vpc_id = aws_vpc.awsvpc.id
 }
-
 resource "aws_route" "private_default_route" {
   route_table_id = aws_route_table.private_route_table.id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id = aws_nat_gateway.aws_nat.id
 }
-
 resource "aws_route_table_association" "app_route_assoc" {
   count = length(local.cidr_list[1])
   subnet_id = aws_subnet.aws-app.*.id[count.index]
@@ -91,6 +104,8 @@ resource "aws_route_table_association" "db_route_assoc" {
   subnet_id = aws_subnet.aws-db.*.id[count.index]
   route_table_id = aws_route_table.private_route_table.id
 }
+
+#Security Group to be used for EC2 instances on the private subnet
 resource "aws_security_group" "private_sg" {
   name = "private_sg"
   description = "Private Security Group"
@@ -138,6 +153,8 @@ resource "aws_security_group" "private_sg" {
     cidr_blocks = ["0.0.0.0/0"] 
   }
 }
+
+#Security group for the windows instance on the public subnet
 resource "aws_security_group" "public_sg" {
   name = "public_sg"
   description = "Public Security Group"
@@ -167,6 +184,8 @@ resource "aws_security_group" "public_sg" {
     cidr_blocks = ["0.0.0.0/0"] 
   }
 }
+
+#VPC Interface endpoints for SSM.
 resource "aws_vpc_endpoint" "ssmendpoint" {
   vpc_endpoint_type = "Interface"
   vpc_id = aws_vpc.awsvpc.id
@@ -191,6 +210,8 @@ resource "aws_vpc_endpoint" "ec2messageendpoint" {
   security_group_ids = [ aws_security_group.private_sg.id ]
   private_dns_enabled = true
 }
+
+#VPC Gateway endpoint for S3. Enables EC2 instances on the private subnet to download Amazon linux RPMs hosted on S3
 resource "aws_vpc_endpoint" "s3gatewayendpoint" {
   vpc_endpoint_type = "Gateway"
   vpc_id = aws_vpc.awsvpc.id

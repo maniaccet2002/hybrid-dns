@@ -6,6 +6,8 @@ resource "aws_db_subnet_group" "wordpress_rds_sg" {
       Name = "Wordpress RDS Security Group"
   }
 }
+
+#Securtity group for RDS database
 resource "aws_security_group" "wordpress_rds_sg" {
   name = "wordpress_rds_sg"
   description = "Wordpress RDS Security Group"
@@ -23,6 +25,7 @@ resource "aws_security_group" "wordpress_rds_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
 # Create Mysql RDS cluster and instance
 resource "aws_db_instance" "wordpress_rds_instance" {
   allocated_storage = var.rds_allocated_storage

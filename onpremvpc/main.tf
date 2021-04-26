@@ -1,6 +1,8 @@
 locals {
    cidr_list = [for cidr_block in cidrsubnets(var.onprem_vpc_cidr,2,2,2,2) : cidrsubnets(cidr_block,2,2) ]
  }
+
+ #VPC
 resource "aws_vpc" "onpremvpc" {
   cidr_block       = var.onprem_vpc_cidr
   instance_tenancy = "default"
@@ -14,10 +16,13 @@ resource "aws_vpc" "onpremvpc" {
     create_before_destroy = true
   }
 }
+
 # Internet Gateway
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.onpremvpc.id
 }
+
+#Public Subnet
 resource "aws_subnet" "onprem-public" {
   count = length(local.cidr_list[0])
   vpc_id = aws_vpc.onpremvpc.id
@@ -28,6 +33,8 @@ resource "aws_subnet" "onprem-public" {
     Name = "onprem-public-${split("-",var.az_list[count.index])[2]}"
   }
 }
+
+#Private Subnet for application layer
 resource "aws_subnet" "onprem-app" {
   count = length(local.cidr_list[1])
   vpc_id = aws_vpc.onpremvpc.id
@@ -38,6 +45,8 @@ resource "aws_subnet" "onprem-app" {
     Name = "onprem-app-${split("-",var.az_list[count.index])[2]}"
   }
 }
+
+#Private Subnet for database layer
 resource "aws_subnet" "onprem-db" {
   count = length(local.cidr_list[2])
   vpc_id = aws_vpc.onpremvpc.id
@@ -48,7 +57,8 @@ resource "aws_subnet" "onprem-db" {
     Name = "onprem-db-${split("-",var.az_list[count.index])[2]}"
   }
 }
-# Route table configurations
+
+# Route table configurations for public subnet
 resource "aws_route_table"  "public_route_table" {
   vpc_id = aws_vpc.onpremvpc.id
 }
@@ -62,9 +72,12 @@ resource "aws_route_table_association" "public_route_assoc" {
   subnet_id = aws_subnet.onprem-public.*.id[count.index]
   route_table_id = aws_route_table.public_route_table.id
 }
+
+#Elastic IP to be used for NAT Gateway
 resource "aws_eip" "nat_eip" {
   vpc = true
 }
+#Natgateway
 resource "aws_nat_gateway" "onprem_nat" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id = aws_subnet.onprem-public.*.id[0]
@@ -72,6 +85,8 @@ resource "aws_nat_gateway" "onprem_nat" {
 resource "aws_route_table"  "private_route_table" {
   vpc_id = aws_vpc.onpremvpc.id
 }
+
+#Route table configuation for private subnets with routes to NAT gateway
 resource "aws_route" "private_default_route" {
   route_table_id = aws_route_table.private_route_table.id
   destination_cidr_block = "0.0.0.0/0"
@@ -87,7 +102,8 @@ resource "aws_route_table_association" "private_route_assoc_db" {
   subnet_id = aws_subnet.onprem-db.*.id[count.index]
   route_table_id = aws_route_table.private_route_table.id
 }
-# Security group which allows public access 
+
+# Security group for EC2 instances on the private subnets 
 resource "aws_security_group" "private_sg" {
   name = "onprem_private_sg"
   description = "Private Security Group"
@@ -135,6 +151,8 @@ resource "aws_security_group" "private_sg" {
     cidr_blocks = ["0.0.0.0/0"] 
   }
 }
+
+#Security group for windows instance on the public subnet
 resource "aws_security_group" "public_sg" {
   name = "public_sg"
   description = "Public Security Group"
@@ -164,6 +182,8 @@ resource "aws_security_group" "public_sg" {
     cidr_blocks = ["0.0.0.0/0"] 
   }
 }
+
+#Security group for EC2 instance hosting wordpress database
 resource "aws_security_group" "wordpress_db_sg_onprem" {
   name = "wordpress_rds_sg_onprem"
   description = "Wordpress RDS Security Group"
@@ -193,6 +213,8 @@ resource "aws_security_group" "wordpress_db_sg_onprem" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
+#Network interface for DNS server1
 resource "aws_network_interface" "dnsserver1_eni" {
   subnet_id = [for value in aws_subnet.onprem-app: value.id if value.tags.Name == "onprem-app-${split("-",var.az_list[0])[2]}"][0]
   security_groups = [aws_security_group.private_sg.id]
@@ -203,6 +225,7 @@ resource "aws_network_interface" "dnsserver1_eni" {
     aws_vpc_endpoint.s3gatewayendpoint
   ]
 }
+#Network interface for DNS server1
 resource "aws_network_interface" "dnsserver2_eni" {
   subnet_id = [for value in aws_subnet.onprem-app: value.id if value.tags.Name == "onprem-app-${split("-",var.az_list[1])[2]}"][0]
   security_groups = [aws_security_group.private_sg.id]
@@ -213,6 +236,8 @@ resource "aws_network_interface" "dnsserver2_eni" {
     aws_vpc_endpoint.s3gatewayendpoint
   ]
 }
+
+#VPC Interface endpoints for SSM
 resource "aws_vpc_endpoint" "ssmendpoint" {
   vpc_endpoint_type = "Interface"
   vpc_id = aws_vpc.onpremvpc.id
@@ -237,6 +262,8 @@ resource "aws_vpc_endpoint" "ec2messageendpoint" {
   security_group_ids = [ aws_security_group.private_sg.id ]
   private_dns_enabled = true
 }
+
+#VPC Gateway endpoint for S3. Enables EC2 instances on the private subnet to download Amazon linux RPMs hosted on S3
 resource "aws_vpc_endpoint" "s3gatewayendpoint" {
   vpc_endpoint_type = "Gateway"
   vpc_id = aws_vpc.onpremvpc.id

@@ -14,3 +14,9 @@ variable "rds_db_name" {}
 variable "rds_db_user" {}
 variable "rds_db_password" {}
 variable "ec2_ssm_instance_profile" {}
+variable "windows_ami_id" {}
+variable "ssh_key_name" {}
+variable "db_endpoint" {}
+variable "aws_dns_name" {}
+variable "onprem_dns_name" {}
+variable "onprem_vpc_cidr" {}
