@@ -14,7 +14,7 @@ When you have network connectivity established between AWS and On premises datac
 
 # Hybrid DNS Architecture
 
-https://github.com/maniaccet2002/hybrid-dns/blob/master/Hybrid%20DNS%20architecture.png
+![alt text](https://github.com/maniaccet2002/hybrid-dns/blob/master/Hybrid%20DNS%20architecture.png)
 
 
 # Prerequisites
