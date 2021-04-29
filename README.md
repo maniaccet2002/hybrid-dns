@@ -19,8 +19,11 @@ https://github.com/maniaccet2002/hybrid-dns/blob/master/Hybrid%20DNS%20architect
 
 # Prerequisites
 •	Have an AWS Account and have your default credentials and region configured
+
 •	Have terraform installed
-•	Create a SSH key pair in your AWS default region. 
+
+•	Create a SSH key pair in your AWS default region.
+
 •	Check variables.tf to modify the default values for the terraform variables
 
 
