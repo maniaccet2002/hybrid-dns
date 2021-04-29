@@ -29,9 +29,13 @@ When you have network connectivity established between AWS and On premises datac
 
 # How to deploy the terraform stack
 •	Download the terraform code from the github repo
+
 •	cd hydrid-dns
+
 •	terraform init
+
 •	terraform validate
+
 •	terraform apply --auto-approve
 
 
@@ -39,6 +43,7 @@ You will be prompted to enter the SSH key pair
 
 # How to destroy the terraform stack
 •	cd hybrid-dns
+
 •	terraform destroy --auto-approve
 
 
